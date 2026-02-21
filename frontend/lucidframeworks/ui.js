@@ -1,0 +1,985 @@
+/**
+ * Frontend UI Logic - Enhanced Version
+ * Handles DOM interactions, canvas rendering, voice recognition, and AI interpretation
+ */
+
+// Global State
+let dreamGraph = new DreamGraph();
+let dreamTracker = null;
+let recognition = null;
+let isListening = false;
+let fullTranscript = '';
+let lastVoiceAnalysis = null;
+let lastDreamAnalysis = null;
+let extractedScenes = [];
+let extractedTransitions = [];
+let currentDreamSession = null;
+
+// Canvas Setup - Initialized after DOM loads
+let canvas = null;
+let ctx = null;
+let isDragging = false;
+let dragStart = { x: 0, y: 0 };
+let offset = { x: 0, y: 0 };
+
+// ============================================
+// INITIALIZATION
+// ============================================
+
+window.addEventListener('DOMContentLoaded', () => {
+    // Initialize canvas safely
+    canvas = document.getElementById('graphCanvas');
+    if (canvas) {
+        ctx = canvas.getContext('2d');
+        resizeCanvas();
+    } else {
+        console.error('Canvas element not found');
+    }
+    
+    // Setup voice recognition FIRST
+    setupVoice();
+    
+    // Then attach event listeners
+    attachEventListeners();
+    
+    // Initialize dream tracker
+    dreamTracker = initializeDreamTracker();
+    displayDreamTrackerStats();
+});
+
+window.addEventListener('resize', resizeCanvas);
+
+/**
+ * Attach all event listeners
+ */
+function attachEventListeners() {
+    console.log('Attaching event listeners...');
+    
+    // Scene and transition buttons
+    const addSceneBtn = document.getElementById('addSceneBtn');
+    if (addSceneBtn) {
+        addSceneBtn.addEventListener('click', uiAddScene);
+    }
+    
+    const addTransitionBtn = document.getElementById('addTransitionBtn');
+    if (addTransitionBtn) {
+        addTransitionBtn.addEventListener('click', uiAddTransition);
+    }
+    
+    // Action buttons
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    if (analyzeBtn) {
+        analyzeBtn.addEventListener('click', uiAnalyzeTransitions);
+    }
+    
+    const interpretBtn = document.getElementById('interpretBtn');
+    if (interpretBtn) {
+        interpretBtn.addEventListener('click', uiInterpretDream);
+    }
+    
+    const historyBtn = document.getElementById('historyBtn');
+    if (historyBtn) {
+        historyBtn.addEventListener('click', displayDreamHistory);
+    }
+    
+    const exportBtn = document.getElementById('exportBtn');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', exportDreamData);
+    }
+    
+    const clearBtn = document.getElementById('clearBtn');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', clearDreamData);
+    }
+    
+    const addExtractedBtn = document.getElementById('addExtractedBtn');
+    if (addExtractedBtn) {
+        addExtractedBtn.addEventListener('click', uiAddExtractedScenes);
+    }
+    
+    console.log('Event listeners attached complete');
+}
+
+/**
+ * Voice Recognition Setup with Enhanced Features
+ */
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+function setupVoice() {
+    if (!SpeechRecognition) {
+        console.warn('Speech Recognition not supported');
+        updateStatus('Voice recognition not supported in this browser', 'error');
+        return;
+    }
+
+    recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = function() {
+        console.log('[VOICE] Recognition started event fired');
+        isListening = true;
+        fullTranscript = '';
+        const startBtn = document.getElementById('startVoiceBtn');
+        const stopBtn = document.getElementById('stopVoiceBtn');
+        const statusDiv = document.getElementById('voiceStatus');
+        const transcript = document.getElementById('voiceTranscript');
+        
+        if (startBtn) startBtn.style.display = 'none';
+        if (stopBtn) stopBtn.style.display = 'flex';
+        if (statusDiv) statusDiv.style.display = 'flex';
+        if (transcript) transcript.textContent = 'Listening...';
+        
+        updateStatus('Voice recognition started', 'info');
+    };
+
+    recognition.onresult = function(event) {
+        let interim = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            const confidence = event.results[i][0].confidence;
+            if (event.results[i].isFinal) {
+                fullTranscript += event.results[i][0].transcript + ' ';
+            } else {
+                interim += event.results[i][0].transcript;
+            }
+        }
+        const displayText = (fullTranscript + interim) || 'Listening...';
+        document.getElementById('voiceTranscript').textContent = displayText;
+    };
+
+    recognition.onerror = function(event) {
+        console.error('[VOICE] Recognition error:', event.error);
+        isListening = false;
+        updateStatus('Error: ' + event.error, 'error');
+        const transcript = document.getElementById('voiceTranscript');
+        if (transcript) transcript.textContent = 'Error: ' + event.error;
+    };
+
+    recognition.onend = function() {
+        console.log('[VOICE] Recognition ended');
+        isListening = false;
+        const startBtn = document.getElementById('startVoiceBtn');
+        const stopBtn = document.getElementById('stopVoiceBtn');
+        
+        if (startBtn) startBtn.style.display = 'flex';
+        if (stopBtn) stopBtn.style.display = 'none';
+        
+        if (fullTranscript.trim().length > 5) {
+            updateStatus('Processing voice input...', 'info');
+            uiProcessTranscript(fullTranscript);
+        } else {
+            updateStatus('No speech detected', 'warning');
+        }
+    };
+}
+
+function startVoiceRecognition() {
+    console.log('[VOICE] Start Voice Recognition called');
+    
+    if (!recognition) {
+        console.error('[VOICE] Recognition not initialized');
+        return;
+    }
+    
+    if (isListening) {
+        return;
+    }
+    
+    try {
+        fullTranscript = '';
+        isListening = true;
+        recognition.abort();
+        
+        setTimeout(() => {
+            recognition.start();
+        }, 100);
+    } catch (e) {
+        console.error('[VOICE] Error:', e);
+        isListening = false;
+    }
+}
+
+function stopVoiceRecognition() {
+    if (recognition && isListening) {
+        recognition.stop();
+    }
+}
+
+/**
+ * Process transcript using backend analysis - Enhanced
+ */
+function uiProcessTranscript(transcript) {
+    // Analyze with enhanced voice processor
+    const voiceAnalysis = analyzeTranscript(transcript);
+    
+    if (!voiceAnalysis) {
+        alert('Transcript too short or unclear');
+        return;
+    }
+
+    lastVoiceAnalysis = voiceAnalysis;
+    extractedScenes = voiceAnalysis.scenes;
+    extractedTransitions = voiceAnalysis.transitions;
+    
+    // Auto-record dream to tracker
+    if (dreamTracker && extractedScenes.length > 0) {
+        const sceneNames = extractedScenes.map(s => typeof s === 'string' ? s : s.scene);
+        currentDreamSession = dreamTracker.recordDream(sceneNames);
+        console.log('Dream recorded to tracker:', currentDreamSession);
+    }
+
+    // Display confidence and quality
+    displayVoiceQuality(voiceAnalysis);
+    displayExtractedData();
+    uiAnalyzeDreamWithAI(transcript, voiceAnalysis);
+}
+
+/**
+ * Display voice recognition quality metrics
+ */
+function displayVoiceQuality(voiceAnalysis) {
+    const qualitySection = document.getElementById('voiceQuality') || createVoiceQualityElement();
+    
+    const confidencePercent = Math.round(voiceAnalysis.confidence * 100);
+    const confidenceColor = voiceAnalysis.confidence > 0.75 ? '#4caf50' : 
+                           voiceAnalysis.confidence > 0.5 ? '#ff9800' : '#f44336';
+    
+    qualitySection.innerHTML = `
+        <div style="padding: 12px; background: rgba(76, 175, 80, 0.1); border-radius: 8px; margin-top: 12px;">
+            <div style="margin-bottom: 8px;"><strong>🎯 Recognition Quality: ${voiceAnalysis.qualityLevel}</strong></div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="flex: 1; height: 24px; background: #e0e0e0; border-radius: 4px; overflow: hidden;">
+                    <div style="width: ${confidencePercent}%; height: 100%; background: ${confidenceColor}; transition: width 0.3s;"></div>
+                </div>
+                <span style="font-weight: bold; color: ${confidenceColor};">${confidencePercent}%</span>
+            </div>
+            <div style="margin-top: 8px; font-size: 0.9em; color: var(--color-text-secondary);">
+                <div>Words: ${voiceAnalysis.wordCount} | Sentences: ${voiceAnalysis.sentenceCount}</div>
+            </div>
+        </div>
+    `;
+}
+
+function createVoiceQualityElement() {
+    const container = document.getElementById('voiceStatus');
+    const qualityDiv = document.createElement('div');
+    qualityDiv.id = 'voiceQuality';
+    container.appendChild(qualityDiv);
+    return qualityDiv;
+}
+
+/**
+ * Display extracted data UI
+ */
+function displayExtractedData() {
+    const extractedData = document.getElementById('extractedData');
+    const extractedList = document.getElementById('extractedList');
+
+    if (extractedScenes.length === 0) {
+        extractedData.style.display = 'none';
+        return;
+    }
+
+    extractedList.innerHTML = extractedScenes.map((sceneObj, idx) => {
+        const sceneName = typeof sceneObj === 'string' ? sceneObj : sceneObj.scene;
+        const confidence = sceneObj.confidence || 0.8;
+        return `
+            <li class="extracted-item">
+                <div class="extracted-item-label">Scene ${idx + 1}</div>
+                <div class="extracted-item-text">${escapeHtml(sceneName)}</div>
+                <div class="confidence-badge" style="font-size: 0.8em; color: var(--color-text-secondary);">
+                    Confidence: ${Math.round(confidence * 100)}%
+                </div>
+            </li>
+        `;
+    }).join('');
+
+    extractedData.style.display = 'block';
+}
+
+/**
+ * Analyze dream with AI and display results - Enhanced
+ */
+function uiAnalyzeDreamWithAI(transcript, voiceAnalysis) {
+    const analysisSection = document.getElementById('dreamAnalysisSection');
+    const analysisContent = document.getElementById('dreamAnalysisContent');
+    
+    analysisSection.style.display = 'block';
+    analysisContent.innerHTML = '<div style="text-align: center; padding: 20px;"><div class="loading-spinner"></div> Advanced Dream Analysis...</div>';
+
+    requestAnimationFrame(() => {
+        const voiceData = analyzeTranscript(transcript);
+        const segments = segmentDreamTranscript(transcript);
+        const analysis = performDeepDreamAnalysis(transcript, voiceData, segments);
+        
+        lastDreamAnalysis = analysis;
+        uiDisplayDreamAnalysis(analysis, segments);
+    });
+}
+
+/**
+ * Display dream analysis results UI - Enhanced
+ */
+function uiDisplayDreamAnalysis(analysis, segments) {
+    const content = document.getElementById('dreamAnalysisContent');
+    let html = '';
+
+    // Overview
+    html += `<div class="ai-insights">
+        <div class="insight-title">📊 Dream Overview</div>
+        <div class="insight-item"><strong>Theme:</strong> ${analysis.theme}</div>
+        <div class="insight-item"><strong>Complexity:</strong> ${analysis.complexity} (${analysis.wordCount} words)</div>
+        <div class="insight-item"><strong>Dominant Emotion:</strong> <span class="emotion-indicator emotion-${analysis.dominantEmotion}">${analysis.dominantEmotion.toUpperCase()}</span></div>
+        <div class="insight-item"><strong>Recognition Quality:</strong> ${analysis.qualityLevel} (${Math.round(analysis.confidence * 100)}%)</div>
+    </div>`;
+
+    // Segments (limit display to first 5)
+    if (segments.length > 0) {
+        html += `<div style="margin-top: 16px;"><strong style="color: var(--color-primary);">🔍 Key Segments (${segments.length})</strong>`;
+        segments.slice(0, 5).forEach((seg, i) => {
+            html += `<div class="dream-segment" style="margin-top: 8px;">
+                <div class="segment-label">${seg.type.toUpperCase()}</div>
+                <div class="segment-text">"${escapeHtml(seg.text.substring(0, 100))}${seg.text.length > 100 ? '...' : ''}"</div>
+            </div>`;
+        });
+        if (segments.length > 5) html += `<div style="padding: 8px; color: var(--color-text-secondary);">+ ${segments.length - 5} more segments</div>`;
+        html += `</div>`;
+    }
+
+    // Symbols
+    if (analysis.symbols.size > 0) {
+        html += `<div class="ai-insights" style="margin-top: 16px;"><div class="insight-title">✨ Symbols Found (${analysis.symbols.size})</div>`;
+        let symbolCount = 0;
+        analysis.symbols.forEach((meaning, symbol) => {
+            if (symbolCount++ < 8) {
+                html += `<div class="insight-item"><strong>${symbol}:</strong> ${meaning.substring(0, 80)}...</div>`;
+            }
+        });
+        html += `</div>`;
+    }
+
+    // Emotions
+    if (Object.keys(analysis.emotionCounts || {}).length > 0) {
+        html += `<div class="ai-insights" style="margin-top: 16px;"><div class="insight-title">😊 Emotions Detected</div>`;
+        let emotionCount = 0;
+        Object.entries(analysis.emotionCounts).forEach(([emotion, count]) => {
+            if (count > 0 && emotionCount++ < 5) {
+                html += `<div class="insight-item"><strong>${emotion}:</strong> ${count} occurrence${count > 1 ? 's' : ''}</div>`;
+            }
+        });
+        html += `</div>`;
+    }
+
+    // Insights
+    html += `<div class="ai-insights" style="margin-top: 16px;">
+        <div class="insight-title">🧠 Psychological Insights</div>
+        ${generatePsychologicalInsights(analysis)}
+    </div>`;
+    
+    // Add AI interpretation button
+    html += `<div style="margin-top: 16px; text-align: center;">
+        <button onclick="uiGenerateAIDreamReport()" style="padding: 12px 24px; background: var(--color-primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1em;">
+            🤖 Generate Full AI Dream Report
+        </button>
+    </div>`;
+
+    content.innerHTML = html;
+    
+    // Show dream tracking stats and predictions
+    setTimeout(() => {
+        displayDreamTrackerStats();
+        displayPredictedNextDream();
+    }, 100);
+}
+
+/**
+ * Generate comprehensive AI dream interpretation report
+ */
+function uiGenerateAIDreamReport() {
+    if (!lastDreamAnalysis) {
+        alert('Please analyze a dream first');
+        return;
+    }
+
+    const reportSection = document.getElementById('aiReportSection') || createAIReportElement();
+    const reportContent = reportSection.querySelector('.ai-report-content');
+    
+    reportContent.innerHTML = '<div style="text-align: center; padding: 20px;"><div class="loading-spinner"></div> Generating AI Report...</div>';
+
+    requestAnimationFrame(() => {
+        const report = generateComprehensiveReport(lastDreamAnalysis);
+        reportContent.innerHTML = report;
+    });
+}
+
+function createAIReportElement() {
+    const section = document.createElement('div');
+    section.id = 'aiReportSection';
+    section.innerHTML = `
+        <div style="margin-top: 24px; padding: 20px; background: var(--color-bg-1); border-radius: 12px; border-left: 4px solid var(--color-primary);">
+            <div class="ai-report-content"></div>
+        </div>
+    `;
+    document.getElementById('dreamAnalysisSection').after(section);
+    return section;
+}
+
+/**
+ * Add scene from UI
+ */
+function uiAddScene() {
+    const desc = document.getElementById('sceneDesc').value.trim();
+    if (!desc) {
+        alert('Please enter a scene description');
+        return;
+    }
+
+    const canvas = document.getElementById('graphCanvas');
+    dreamGraph.addScene(desc, Math.random() * (canvas.width - 200) + 100, Math.random() * (canvas.height - 200) + 100);
+    
+    document.getElementById('sceneDesc').value = '';
+    
+    // Apply force layout
+    for (let i = 0; i < 50; i++) {
+        applyForceLayout(dreamGraph.scenes, canvas.width, canvas.height);
+    }
+    
+    updateSceneSelects();
+    updateSceneList();
+    drawGraph();
+}
+
+/**
+ * Add transition from UI
+ */
+function uiAddTransition() {
+    const fromId = parseInt(document.getElementById('fromScene').value);
+    const toId = parseInt(document.getElementById('toScene').value);
+    const prob = parseFloat(document.getElementById('probability').value);
+
+    if (!fromId || !toId) {
+        alert('Please select both source and destination scenes');
+        return;
+    }
+
+    try {
+        dreamGraph.addTransition(fromId, toId, prob);
+        document.getElementById('probability').value = 0.5;
+        drawGraph();
+    } catch (e) {
+        alert(e.message);
+    }
+}
+
+/**
+ * Update scene select dropdowns
+ */
+function updateSceneSelects() {
+    const fromSelect = document.getElementById('fromScene');
+    const toSelect = document.getElementById('toScene');
+    const scenes = dreamGraph.getAllScenes();
+    
+    const options = scenes.map(s => 
+        `<option value="${s.id}">Scene ${s.id}: ${s.name}</option>`
+    ).join('');
+
+    fromSelect.innerHTML = '<option value="">Select source scene</option>' + options;
+    toSelect.innerHTML = '<option value="">Select destination scene</option>' + options;
+}
+
+/**
+ * Update scene list display
+ */
+function updateSceneList() {
+    const list = document.getElementById('sceneList');
+    const scenes = dreamGraph.getAllScenes();
+    
+    if (scenes.length === 0) {
+        list.innerHTML = '<div class="empty-state">No scenes yet. Add your first dream scene!</div>';
+        return;
+    }
+
+    list.innerHTML = scenes.map(scene => `
+        <div class="scene-item">
+            <div class="scene-id">Scene ${scene.id}</div>
+            <div class="scene-name">${scene.name}</div>
+        </div>
+    `).join('');
+}
+
+/**
+ * Add extracted scenes to graph
+ */
+function uiAddExtractedScenes() {
+    if (extractedScenes.length === 0) {
+        alert('No scenes extracted from transcript');
+        return;
+    }
+
+    const canvas = document.getElementById('graphCanvas');
+    let addedCount = 0;
+
+    // Add all extracted scenes
+    extractedScenes.forEach(sceneName => {
+        dreamGraph.addScene(sceneName, Math.random() * (canvas.width - 200) + 100, Math.random() * (canvas.height - 200) + 100);
+        addedCount++;
+    });
+
+    // Add transitions between scenes
+    const scenes = dreamGraph.getAllScenes();
+    extractedTransitions.forEach(transition => {
+        if (scenes.length > 0) {
+            const fromScene = scenes[scenes.length - 1];
+            const toScene = scenes.find(s => 
+                s.name.toLowerCase().includes(transition.destination.toLowerCase().split(' ')[0]) ||
+                transition.destination.toLowerCase().includes(s.name.toLowerCase())
+            );
+
+            if (toScene && fromScene.id !== toScene.id) {
+                try {
+                    dreamGraph.addTransition(fromScene.id, toScene.id, transition.probability);
+                } catch (e) {
+                    console.warn(e.message);
+                }
+            }
+        }
+    });
+
+    // Apply layout
+    for (let i = 0; i < 50; i++) {
+        applyForceLayout(dreamGraph.scenes, canvas.width, canvas.height);
+    }
+
+    updateSceneSelects();
+    updateSceneList();
+    drawGraph();
+
+    document.getElementById('voiceTranscript').textContent = '';
+    document.getElementById('voiceTranscript').classList.add('empty');
+    document.getElementById('extractedData').style.display = 'none';
+    document.getElementById('dreamAnalysisSection').style.display = 'none';
+    fullTranscript = '';
+
+    alert(`Added ${addedCount} scenes from voice transcript!`);
+}
+
+/**
+ * Analyze transitions and display results
+ */
+function uiAnalyzeTransitions() {
+    const scenes = dreamGraph.getAllScenes();
+    if (scenes.length === 0) {
+        alert('Add scenes first to analyze');
+        return;
+    }
+
+    const report = analyzeTransitionsReport(scenes);
+    const output = document.getElementById('sequenceOutput');
+    output.style.display = 'block';
+    
+    // Ensure report is a string
+    const reportString = typeof report === 'string' ? report : String(report);
+    output.textContent = reportString;
+    
+    // Auto-save dream to tracker
+    if (dreamTracker && scenes.length > 0) {
+        const sceneNames = scenes.map(s => s.name);
+        dreamTracker.recordDream(sceneNames);
+        displayDreamTrackerStats();
+        displayPredictedNextDream();
+    }
+}
+
+/**
+ * Interpret dream and display results
+ */
+function uiInterpretDream() {
+    const scenes = dreamGraph.getAllScenes();
+    if (scenes.length === 0) {
+        alert('Add dream scenes first to interpret');
+        return;
+    }
+
+    const report = generateInterpretation(scenes, {}, dreamSymbols);
+    const output = document.getElementById('sequenceOutput');
+    output.style.display = 'block';
+    output.textContent = report;
+}
+
+// ============================================
+// CANVAS RENDERING
+// ============================================
+
+function resizeCanvas() {
+    if (!canvas) {
+        console.error('Canvas not initialized');
+        return;
+    }
+    const container = canvas.parentElement;
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
+    drawGraph();
+}
+
+function drawGraph() {
+    if (!ctx || !canvas) {
+        console.error('Canvas context not initialized');
+        return;
+    }
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const scenes = dreamGraph.getAllScenes();
+
+    if (scenes.length === 0) {
+        ctx.fillStyle = getComputedStyle(document.documentElement)
+            .getPropertyValue('--color-text-secondary');
+        ctx.font = '16px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Add scenes to visualize your dream graph', canvas.width / 2, canvas.height / 2);
+        return;
+    }
+
+    // Draw edges
+    scenes.forEach(scene => {
+        scene.edges.forEach(edge => {
+            drawEdge(scene, edge);
+        });
+    });
+
+    // Draw nodes
+    const colors = [
+        'var(--color-bg-1)', 'var(--color-bg-2)', 'var(--color-bg-3)', 
+        'var(--color-bg-4)', 'var(--color-bg-5)'
+    ];
+
+    scenes.forEach((scene, index) => {
+        drawNode(scene, colors[index % colors.length]);
+    });
+}
+
+function drawEdge(scene, edge) {
+    const from = { x: scene.x + offset.x, y: scene.y + offset.y };
+    const to = { x: edge.to.x + offset.x, y: edge.to.y + offset.y };
+
+    const angle = Math.atan2(to.y - from.y, to.x - from.x);
+    const arrowEnd = {
+        x: to.x - 40 * Math.cos(angle),
+        y: to.y - 40 * Math.sin(angle)
+    };
+
+    // Draw line
+    ctx.strokeStyle = `rgba(33, 128, 141, ${edge.probability})`;
+    ctx.lineWidth = 2 + edge.probability * 2;
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(arrowEnd.x, arrowEnd.y);
+    ctx.stroke();
+
+    // Draw arrow head
+    ctx.fillStyle = ctx.strokeStyle;
+    ctx.beginPath();
+    ctx.moveTo(arrowEnd.x, arrowEnd.y);
+    ctx.lineTo(
+        arrowEnd.x - 10 * Math.cos(angle - Math.PI / 6),
+        arrowEnd.y - 10 * Math.sin(angle - Math.PI / 6)
+    );
+    ctx.lineTo(
+        arrowEnd.x - 10 * Math.cos(angle + Math.PI / 6),
+        arrowEnd.y - 10 * Math.sin(angle + Math.PI / 6)
+    );
+    ctx.closePath();
+    ctx.fill();
+
+    // Draw probability label
+    const midX = (from.x + arrowEnd.x) / 2;
+    const midY = (from.y + arrowEnd.y) / 2;
+    ctx.fillStyle = getComputedStyle(document.documentElement)
+        .getPropertyValue('--color-surface');
+    ctx.fillRect(midX - 20, midY - 10, 40, 20);
+    ctx.fillStyle = getComputedStyle(document.documentElement)
+        .getPropertyValue('--color-text');
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(edge.probability.toFixed(2), midX, midY + 4);
+}
+
+function drawNode(scene, colorVar) {
+    const x = scene.x + offset.x;
+    const y = scene.y + offset.y;
+    const colorValue = getComputedStyle(document.documentElement)
+        .getPropertyValue(colorVar.replace('var(', '').replace(')', ''));
+
+    // Draw node circle
+    ctx.fillStyle = colorValue;
+    ctx.strokeStyle = getComputedStyle(document.documentElement)
+        .getPropertyValue('--color-primary');
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x, y, 35, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Draw node label
+    ctx.fillStyle = getComputedStyle(document.documentElement)
+        .getPropertyValue('--color-text');
+    ctx.font = 'bold 14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`S${scene.id}`, x, y + 5);
+
+    // Draw scene name below
+    ctx.font = '12px sans-serif';
+    const text = scene.name.length > 15 ? scene.name.substring(0, 15) + '...' : scene.name;
+    ctx.fillText(text, x, y + 55);
+}
+
+// ============================================
+// CANVAS INTERACTION
+// ============================================
+
+let draggedScene = null;
+let dragOffset = { x: 0, y: 0 };
+
+canvas.addEventListener('mousedown', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    
+    draggedScene = findSceneAtPosition(dreamGraph.scenes, mouseX, mouseY, offset);
+    
+    if (draggedScene) {
+        dragOffset.x = mouseX - (draggedScene.x + offset.x);
+        dragOffset.y = mouseY - (draggedScene.y + offset.y);
+        canvas.style.cursor = 'grabbing';
+    } else {
+        isDragging = true;
+        dragStart = { x: e.clientX - offset.x, y: e.clientY - offset.y };
+    }
+});
+
+canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    
+    if (draggedScene) {
+        draggedScene.x = mouseX - offset.x - dragOffset.x;
+        draggedScene.y = mouseY - offset.y - dragOffset.y;
+        
+        draggedScene.x = Math.max(80, Math.min(canvas.width - 80, draggedScene.x));
+        draggedScene.y = Math.max(80, Math.min(canvas.height - 80, draggedScene.y));
+        
+        drawGraph();
+    } else if (isDragging) {
+        offset.x = e.clientX - dragStart.x;
+        offset.y = e.clientY - dragStart.y;
+        drawGraph();
+    }
+});
+
+canvas.addEventListener('mouseup', () => {
+    isDragging = false;
+    draggedScene = null;
+    canvas.style.cursor = 'grab';
+});
+
+canvas.addEventListener('mouseleave', () => {
+    isDragging = false;
+    draggedScene = null;
+    canvas.style.cursor = 'grab';
+});
+
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+/**
+ * Update status message with optional styling
+ */
+function updateStatus(message, type = 'info') {
+    const statusElement = document.getElementById('statusText');
+    if (!statusElement) return;
+    
+    statusElement.textContent = message;
+    
+    // Clear previous classes
+    statusElement.className = '';
+    
+    // Add status styling
+    switch(type) {
+        case 'error':
+            statusElement.style.color = '#f44336';
+            break;
+        case 'success':
+            statusElement.style.color = '#4caf50';
+            break;
+        case 'warning':
+            statusElement.style.color = '#ff9800';
+            break;
+        case 'info':
+        default:
+            statusElement.style.color = 'var(--color-text-secondary)';
+    }
+}
+
+// ============================================
+// DREAM TRACKING & PREDICTION
+// ============================================
+
+/**
+ * Display dream tracker statistics
+ */
+function displayDreamTrackerStats() {
+    if (!dreamTracker) return;
+    
+    const stats = dreamTracker.getStatistics();
+    const output = document.getElementById('sequenceOutput');
+    
+    let html = `<div style="padding: 16px; background: var(--color-surface); border-radius: 8px; margin-top: 16px;">
+        <div style="font-weight: 600; font-size: 1.1em; margin-bottom: 12px; color: var(--color-primary);">📊 Dream Tracking Statistics</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 0.95em;">
+            <div>
+                <span style="color: var(--color-text-secondary);">Dreams Recorded:</span>
+                <div style="font-size: 1.4em; font-weight: bold; color: var(--color-primary);">${stats.totalDreamsRecorded}</div>
+            </div>
+            <div>
+                <span style="color: var(--color-text-secondary);">Unique Scenes:</span>
+                <div style="font-size: 1.4em; font-weight: bold; color: var(--color-primary);">${stats.uniqueScenes}</div>
+            </div>
+            <div>
+                <span style="color: var(--color-text-secondary);">Scene Transitions:</span>
+                <div style="font-size: 1.4em; font-weight: bold; color: var(--color-primary);">${stats.totalTransitions}</div>
+            </div>
+            <div>
+                <span style="color: var(--color-text-secondary);">Avg Scenes/Dream:</span>
+                <div style="font-size: 1.4em; font-weight: bold; color: var(--color-primary);">${stats.averageScenesPerDream}</div>
+            </div>
+        </div>
+        <div style="margin-top: 12px; padding: 8px; background: var(--color-bg-1); border-radius: 4px;">
+            <div style="font-size: 0.9em;"><strong>Most Frequent Scene:</strong> "${escapeHtml(stats.mostFrequentScene)}"</div>
+            <div style="font-size: 0.9em; margin-top: 8px;"><strong>Most Common Transition:</strong> ${stats.mostCommonTransition}</div>
+        </div>
+    </div>`;
+    
+    if (output) {
+        output.innerHTML += html;
+    }
+}
+
+/**
+ * Display predicted next dream
+ */
+function displayPredictedNextDream() {
+    if (!dreamTracker || dreamTracker.getAllDreams().length < 2) return;
+    
+    const prediction = dreamTracker.predictNextDream();
+    const output = document.getElementById('sequenceOutput');
+    
+    let html = `<div style="padding: 16px; background: linear-gradient(135deg, rgba(103, 58, 183, 0.1) 0%, rgba(33, 150, 243, 0.1) 100%); border-radius: 8px; margin-top: 16px; border-left: 4px solid var(--color-primary);">
+        <div style="font-weight: 600; font-size: 1.1em; margin-bottom: 12px; color: var(--color-primary);">🔮 Predicted Next Dream</div>
+        <div style="font-size: 0.95em; margin-bottom: 12px;">
+            <strong>Confidence Level:</strong> ${(prediction.confidence * 100).toFixed(0)}%
+            <div style="width: 100%; height: 8px; background: var(--color-bg-1); border-radius: 4px; margin-top: 4px; overflow: hidden;">
+                <div style="width: ${prediction.confidence * 100}%; height: 100%; background: var(--color-primary); border-radius: 4px; transition: width 0.3s;"></div>
+            </div>
+        </div>
+        <div style="margin-bottom: 12px;">
+            <div style="font-size: 0.9em; color: var(--color-text-secondary); margin-bottom: 4px;"><strong>Most Likely Scenes:</strong></div>`;
+    
+    prediction.prediction.forEach((item, idx) => {
+        html += `<div style="padding: 8px; background: var(--color-surface); border-radius: 4px; margin-top: 4px; display: flex; justify-content: space-between;">
+            <span>${idx + 1}. ${escapeHtml(item.scene)}</span>
+            <span style="font-weight: bold; color: var(--color-primary);">${(item.likelihood * 100).toFixed(0)}%</span>
+        </div>`;
+    });
+    
+    html += `</div>
+        <div style="margin-top: 12px; padding: 8px; background: var(--color-bg-1); border-radius: 4px; font-size: 0.9em; font-style: italic; color: var(--color-text-secondary);">
+            💭 ${escapeHtml(prediction.reasoning)}
+        </div>
+    </div>`;
+    
+    if (output) {
+        output.innerHTML += html;
+    }
+}
+
+/**
+ * Display dream history
+ */
+function displayDreamHistory() {
+    if (!dreamTracker) return;
+    
+    const history = dreamTracker.getDreamHistory();
+    if (history.length === 0) {
+        alert('No dreams recorded yet. Analyze a dream to start tracking history.');\n        return;
+    }
+    
+    const output = document.getElementById('sequenceOutput');
+    let html = `<div style="padding: 16px; background: var(--color-surface); border-radius: 8px;">
+        <div style="font-weight: 600; font-size: 1.1em; margin-bottom: 12px; color: var(--color-primary);">📜 Dream History</div>
+        <div style="max-height: 500px; overflow-y: auto;">`;
+    
+    history.forEach(dream => {
+        html += `<div style="padding: 12px; background: var(--color-bg-1); border-radius: 4px; margin-bottom: 8px;">
+            <div style="font-weight: 600; color: var(--color-primary);">Dream #${dream.index}</div>
+            <div style="font-size: 0.85em; color: var(--color-text-secondary); margin-top: 4px;">
+                ${dream.date} at ${dream.time}
+            </div>
+            <div style="font-size: 0.9em; margin-top: 8px;">
+                <strong>Scenes:</strong> ${dream.sceneCount} 
+                <strong style="margin-left: 16px;">Transitions:</strong> ${dream.transitionCount}
+            </div>
+            <div style="font-size: 0.85em; margin-top: 4px; color: var(--color-text-secondary);">
+                ${dream.scenes.slice(0, 3).map(s => `"${escapeHtml(s)}"`).join(' → ')}${dream.scenes.length > 3 ? '...' : ''}
+            </div>
+        </div>`;
+    });
+    
+    html += `</div></div>`;
+    output.style.display = 'block';
+    output.innerHTML = html;
+}
+
+/**
+ * Export dream data
+ */
+function exportDreamData() {
+    if (!dreamTracker) return;
+    
+    const data = dreamTracker.exportData();
+    const dataStr = JSON.stringify(data, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);\n    const link = document.createElement('a');
+    link.href = url;
+    link.download = `dream_data_${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+}
+
+/**
+ * Clear all dream data
+ */
+function clearDreamData() {
+    if (!dreamTracker) return;
+    
+    if (confirm('Are you sure you want to clear all recorded dreams? This cannot be undone.')) {
+        dreamTracker.clear();
+        alert('All dream data has been cleared.');
+        const output = document.getElementById('sequenceOutput');
+        if (output) {
+            output.innerHTML = '';
+            output.style.display = 'none';
+        }
+    }
+}

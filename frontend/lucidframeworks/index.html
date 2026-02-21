@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lucid Framework - Dream Graph Builder</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>LUCID FRAMEWORK</h1>
+            <p class="subtitle">Interactive Dream Graph Builder & Sequence Generator</p>
+        </header>
+
+        <div class="layout">
+            <div class="sidebar">
+                <!-- Voice Recognition Section -->
+                <div class="card voice-section">
+                    <h2>Voice Recognition</h2>
+                    <p style="font-size: var(--font-size-base); margin-bottom: var(--space-12); color: var(--color-text-secondary);">
+                        Describe your dream using voice. The AI will extract scenes, transitions, and probabilities.
+                    </p>
+                    <div class="voice-controls">
+                        <button class="voice-button" id="startVoiceBtn" onclick="console.log('clicked'); startVoiceRecognition();">
+                            <span>MIC</span> Start Listening
+                        </button>
+                        <button class="voice-button" id="stopVoiceBtn" style="display:none; background: #f59e0b;" onclick="stopVoiceRecognition();">
+                            <span>STOP</span> Stop Listening
+                        </button>
+                        <div class="voice-status" id="voiceStatus" style="display:none; flex:1;">
+                            <span id="statusText">Listening...</span>
+                        </div>
+                    </div>
+                    <div class="voice-transcript empty" id="voiceTranscript">
+                        Transcript will appear here...
+                    </div>
+                    <div class="extracted-data" id="extractedData" style="display:none;">
+                        <div style="font-weight: 600; margin-bottom: var(--space-12); color: var(--color-primary);">Extracted Data</div>
+                        <ul class="extracted-list" id="extractedList"></ul>
+                        <button class="btn" id="addExtractedBtn" style="margin-top: var(--space-12); width: 100%;">
+                            [+] Add to Dream Graph
+                        </button>
+                    </div>
+                    <div class="dream-analysis" id="dreamAnalysisSection" style="display:none;">
+                        <div style="font-weight: 600; margin-bottom: var(--space-12); color: var(--color-primary);">AI Dream Analysis</div>
+                        <div id="dreamAnalysisContent" style="max-height: 500px; overflow-y: auto;"></div>
+                    </div>
+                </div>
+
+                <!-- Add Scene Card -->
+                <div class="card">
+                    <h2>[+] Add Dream Scene</h2>
+                    <div class="form-group">
+                        <label for="sceneDesc">Scene Description</label>
+                        <input type="text" id="sceneDesc" placeholder="e.g., Walking through a misty forest">
+                    </div>
+                    <button class="btn" id="addSceneBtn">Add Scene</button>
+                </div>
+
+                <!-- Add Transition Card -->
+                <div class="card">
+                    <h2>[->] Add Transition</h2>
+                    <div class="form-group">
+                        <label for="fromScene">From Scene</label>
+                        <select id="fromScene">
+                            <option value="">Select source scene</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="toScene">To Scene</label>
+                        <select id="toScene">
+                            <option value="">Select destination scene</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="probability">Probability (0.0 - 1.0)</label>
+                        <input type="number" id="probability" min="0" max="1" step="0.1" value="0.5">
+                    </div>
+                    <button class="btn" id="addTransitionBtn">Add Transition</button>
+                </div>
+
+                <!-- Scene List -->
+                <div class="card">
+                    <h2>[*] Scenes</h2>
+                    <div class="scene-list" id="sceneList">
+                        <div class="empty-state">No scenes yet. Add your first dream scene!</div>
+                    </div>
+                </div>
+
+                <!-- Actions Card -->
+                <div class="card">
+                    <h2>[!] Actions</h2>
+                    <button class="btn btn-secondary" id="analyzeBtn">Analyze Transitions</button>
+                    <button class="btn" id="interpretBtn" style="margin-top: 12px;">Interpret Dream</button>
+                    <button class="btn" id="historyBtn" style="margin-top: 12px; background: #9c27b0;">Dream History</button>
+                    <button class="btn" id="exportBtn" style="margin-top: 12px; background: #2196f3;">Export Data</button>
+                    <button class="btn btn-secondary" id="clearBtn" style="margin-top: 12px;">Clear Data</button>
+                </div>
+            </div>
+
+            <!-- Main Canvas Area -->
+            <div>
+                <div id="canvas-container">
+                    <canvas id="graphCanvas"></canvas>
+                </div>
+
+                <!-- Output Display -->
+                <div class="card" style="margin-top: 24px;">
+                    <h2>[#] Output</h2>
+                    <div id="sequenceOutput" style="display:none;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Backend Logic Scripts -->
+    <script src="../../backend/lucidframeworks/dreamSymbols.js"></script>
+    <script src="../../backend/lucidframeworks/voiceProcessor.js"></script>
+    <script src="../../backend/lucidframeworks/dreamAnalysis.js"></script>
+    <script src="../../backend/lucidframeworks/aiInterpretation.js"></script>
+    <script src="../../backend/lucidframeworks/graphEngine.js"></script>
+    <script src="../../backend/lucidframeworks/dreamTracker.js"></script>
+    
+    <!-- Frontend UI Script -->
+    <script src="ui.js"></script>
+</body>
+</html>
