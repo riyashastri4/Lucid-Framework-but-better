@@ -79,7 +79,16 @@ window.addEventListener('resize', resizeCanvas);
  * Attach all event listeners
  */
 function attachEventListeners() {
-
+    // Voice buttons
+    const startVoiceBtn = document.getElementById('startVoiceBtn');
+    if (startVoiceBtn) {
+        startVoiceBtn.addEventListener('click', startVoiceRecognition);
+    }
+    
+    const stopVoiceBtn = document.getElementById('stopVoiceBtn');
+    if (stopVoiceBtn) {
+        stopVoiceBtn.addEventListener('click', stopVoiceRecognition);
+    }
     
     // Scene and transition buttons
     const addSceneBtn = document.getElementById('addSceneBtn');
@@ -133,8 +142,11 @@ const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecogni
 
 function setupVoice() {
     if (!SpeechRecognition) {
-        console.warn('Speech Recognition not supported');
-        updateStatus('Voice recognition not supported in this browser', 'error');
+        console.warn('[v0] Speech Recognition not supported - text fallback enabled');
+        const startBtn = document.getElementById('startVoiceBtn');
+        if (startBtn) {
+            startBtn.innerHTML = '<span aria-hidden="true">&#9998;</span> Type Dream Instead';
+        }
         return;
     }
 
@@ -144,7 +156,6 @@ function setupVoice() {
     recognition.lang = 'en-US';
 
     recognition.onstart = function() {
-        console.log('[VOICE] Recognition started event fired');
         isListening = true;
         fullTranscript = '';
         const startBtn = document.getElementById('startVoiceBtn');
@@ -152,12 +163,15 @@ function setupVoice() {
         const statusDiv = document.getElementById('voiceStatus');
         const transcript = document.getElementById('voiceTranscript');
         
-        if (startBtn) startBtn.style.display = 'none';
-        if (stopBtn) stopBtn.style.display = 'flex';
-        if (statusDiv) statusDiv.style.display = 'flex';
-        if (transcript) transcript.textContent = 'Listening...';
+        if (startBtn) startBtn.classList.add('hidden');
+        if (stopBtn) stopBtn.classList.remove('hidden');
+        if (statusDiv) statusDiv.classList.remove('hidden');
+        if (transcript) {
+            transcript.textContent = 'Listening...';
+            transcript.classList.remove('empty');
+        }
         
-        updateStatus('Voice recognition started', 'info');
+        updateStatus('Listening...', 'info');
     };
 
     recognition.onresult = function(event) {
@@ -183,28 +197,30 @@ function setupVoice() {
     };
 
     recognition.onend = function() {
-        console.log('[VOICE] Recognition ended');
+        const wasListening = isListening;
         isListening = false;
         const startBtn = document.getElementById('startVoiceBtn');
         const stopBtn = document.getElementById('stopVoiceBtn');
+        const statusDiv = document.getElementById('voiceStatus');
         
-        if (startBtn) startBtn.style.display = 'flex';
-        if (stopBtn) stopBtn.style.display = 'none';
+        if (startBtn) startBtn.classList.remove('hidden');
+        if (stopBtn) stopBtn.classList.add('hidden');
+        if (statusDiv) statusDiv.classList.add('hidden');
         
-        if (fullTranscript.trim().length > 5) {
+        // Only process if we were actually listening (not an abort/restart)
+        if (wasListening && fullTranscript.trim().length > 5) {
             updateStatus('Processing voice input...', 'info');
             uiProcessTranscript(fullTranscript);
-        } else {
+        } else if (wasListening) {
             updateStatus('No speech detected', 'warning');
         }
     };
 }
 
 function startVoiceRecognition() {
-    console.log('[VOICE] Start Voice Recognition called');
-    
+    // If speech recognition is not supported, show text input fallback
     if (!recognition) {
-        console.error('[VOICE] Recognition not initialized');
+        showTextInputFallback();
         return;
     }
     
@@ -214,16 +230,54 @@ function startVoiceRecognition() {
     
     try {
         fullTranscript = '';
-        isListening = true;
-        recognition.abort();
-        
-        setTimeout(() => {
-            recognition.start();
-        }, 100);
+        // Don't call abort before start - it triggers onend prematurely
+        recognition.start();
     } catch (e) {
-        console.error('[VOICE] Error:', e);
-        isListening = false;
+        // If already started or other error, try abort + restart
+        try {
+            recognition.abort();
+            setTimeout(() => {
+                fullTranscript = '';
+                recognition.start();
+            }, 200);
+        } catch (e2) {
+            console.error('[v0] Voice recognition failed:', e2);
+            isListening = false;
+            showTextInputFallback();
+        }
     }
+}
+
+function showTextInputFallback() {
+    const transcript = document.getElementById('voiceTranscript');
+    if (!transcript) return;
+    
+    transcript.classList.remove('empty');
+    transcript.innerHTML = '';
+    transcript.contentEditable = 'true';
+    transcript.setAttribute('role', 'textbox');
+    transcript.setAttribute('aria-label', 'Type your dream description here');
+    transcript.style.cursor = 'text';
+    transcript.textContent = '';
+    transcript.focus();
+    
+    // Show a submit button
+    const startBtn = document.getElementById('startVoiceBtn');
+    if (startBtn) {
+        startBtn.textContent = 'Process Text';
+        startBtn.onclick = function() {
+            const text = transcript.textContent.trim();
+            if (text.length > 5) {
+                fullTranscript = text;
+                transcript.contentEditable = 'false';
+                uiProcessTranscript(text);
+            } else {
+                updateStatus('Please type a longer dream description', 'warning');
+            }
+        };
+    }
+    
+    updateStatus('Voice not supported -- type your dream instead', 'warning');
 }
 
 function stopVoiceRecognition() {
@@ -304,7 +358,7 @@ function displayExtractedData() {
     const extractedList = document.getElementById('extractedList');
 
     if (extractedScenes.length === 0) {
-        extractedData.style.display = 'none';
+        extractedData.classList.add('hidden');
         return;
     }
 
@@ -322,7 +376,7 @@ function displayExtractedData() {
         `;
     }).join('');
 
-    extractedData.style.display = 'block';
+    extractedData.classList.remove('hidden');
 }
 
 /**
@@ -332,7 +386,7 @@ function uiAnalyzeDreamWithAI(transcript, voiceAnalysis) {
     const analysisSection = document.getElementById('dreamAnalysisSection');
     const analysisContent = document.getElementById('dreamAnalysisContent');
     
-    analysisSection.style.display = 'block';
+    analysisSection.classList.remove('hidden');
     analysisContent.innerHTML = '<div style="text-align: center; padding: 20px;"><div class="loading-spinner"></div> Advanced Dream Analysis...</div>';
 
     requestAnimationFrame(() => {
@@ -584,8 +638,8 @@ function uiAddExtractedScenes() {
 
     document.getElementById('voiceTranscript').textContent = '';
     document.getElementById('voiceTranscript').classList.add('empty');
-    document.getElementById('extractedData').style.display = 'none';
-    document.getElementById('dreamAnalysisSection').style.display = 'none';
+    document.getElementById('extractedData').classList.add('hidden');
+    document.getElementById('dreamAnalysisSection').classList.add('hidden');
     fullTranscript = '';
 
     alert(`Added ${addedCount} scenes from voice transcript!`);
@@ -603,7 +657,7 @@ function uiAnalyzeTransitions() {
 
     const report = analyzeTransitionsReport(scenes);
     const output = document.getElementById('sequenceOutput');
-    output.style.display = 'block';
+    output.classList.remove('hidden');
     
     // Ensure report is a string
     const reportString = typeof report === 'string' ? report : String(report);
@@ -641,7 +695,7 @@ function uiInterpretDream() {
 
     const report = generateInterpretation(scenes, analysis, dreamSymbols);
     const output = document.getElementById('sequenceOutput');
-    output.style.display = 'block';
+    output.classList.remove('hidden');
     output.textContent = report;
 }
 
@@ -1012,7 +1066,7 @@ function displayDreamHistory() {
     });
     
     html += `</div></div>`;
-    output.style.display = 'block';
+    output.classList.remove('hidden');
     output.innerHTML = html;
 }
 
