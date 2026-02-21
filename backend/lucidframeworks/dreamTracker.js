@@ -365,3 +365,17 @@ function initializeDreamTracker() {
     }
     return dreamTracker;
 }
+/**
+ * Assigns tags to dreams based on detected symbols
+ */
+function generateDreamTags(symbolsMap) {
+    const tags = [];
+    const symbolList = Array.from(symbolsMap.keys());
+
+    if (symbolList.includes('flying') || symbolList.includes('sky')) tags.push('Lucid-Potential');
+    if (symbolList.includes('water') || symbolList.includes('ocean')) tags.push('Emotional-Heavy');
+    if (symbolList.includes('forest') || symbolList.includes('path')) tags.push('Transition-Phase');
+    if (tags.length === 0) tags.push('Abstract');
+
+    return tags;
+}

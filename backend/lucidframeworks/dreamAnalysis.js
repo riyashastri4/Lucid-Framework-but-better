@@ -206,3 +206,28 @@ function generateDreamStatistics(analysis) {
 
     return stats;
 }
+/**
+ * Calculates the emotional intensity score of a dream
+ */
+function calculateEmotionalCharge(emotionCounts) {
+    const weights = {
+        intense: 2.0,
+        fear: 1.5,
+        anger: 1.5,
+        joy: 1.2,
+        peace: 0.8,
+        neutral: 0.5
+    };
+
+    let totalScore = 0;
+    let matchCount = 0;
+
+    Object.entries(emotionCounts).forEach(([type, count]) => {
+        if (count > 0) {
+            totalScore += count * (weights[type] || 1.0);
+            matchCount += count;
+        }
+    });
+
+    return matchCount > 0 ? (totalScore / matchCount).toFixed(2) : 0;
+}

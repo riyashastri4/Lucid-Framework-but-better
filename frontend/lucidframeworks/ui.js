@@ -45,6 +45,29 @@ window.addEventListener('DOMContentLoaded', () => {
     // Initialize dream tracker
     dreamTracker = initializeDreamTracker();
     displayDreamTrackerStats();
+
+    // Add to your UI initialization
+document.getElementById('sceneList').addEventListener('click', (e) => {
+    const sceneItem = e.target.closest('.scene-item');
+    if (sceneItem) {
+        const sceneId = parseInt(sceneItem.querySelector('.scene-id').textContent.replace('Scene ', ''));
+        const scene = dreamGraph.getScene(sceneId);
+        
+        if (scene) {
+            // Center the camera on the selected scene
+            offset.x = (canvas.width / 2) - scene.x;
+            offset.y = (canvas.height / 2) - scene.y;
+            drawGraph();
+            
+            // Temporary highlight effect
+            ctx.strokeStyle = '#ff9800';
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.arc(scene.x + offset.x, scene.y + offset.y, 45, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+    }
+});
 });
 
 window.addEventListener('resize', resizeCanvas);
@@ -954,17 +977,29 @@ function displayDreamHistory() {
 /**
  * Export dream data
  */
-function exportDreamData() {
+function enhancedExport() {
     if (!dreamTracker) return;
     
-    const data = dreamTracker.exportData();
-    const dataStr = JSON.stringify(data, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);\n    const link = document.createElement('a');
-    link.href = url;
-    link.download = `dream_data_${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
+    const stats = dreamTracker.getStatistics();
+    const history = dreamTracker.getDreamHistory();
+    
+    const exportContent = {
+        userName: "Dreamer",
+        exportDate: new Date().toLocaleString(),
+        summaryStats: stats,
+        fullJournal: history,
+        metadata: {
+            version: "2.0-Enhanced",
+            engine: "Lucid Framework AI"
+        }
+    };
+
+    const blob = new Blob([JSON.stringify(exportContent, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Dream_Journal_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
 }
 
 /**
