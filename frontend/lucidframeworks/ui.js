@@ -39,6 +39,9 @@ window.addEventListener('DOMContentLoaded', () => {
     // Setup voice recognition FIRST
     setupVoice();
     
+    // Setup canvas interaction (must be after canvas is initialized)
+    setupCanvasInteraction();
+    
     // Then attach event listeners
     attachEventListeners();
     
@@ -76,7 +79,7 @@ window.addEventListener('resize', resizeCanvas);
  * Attach all event listeners
  */
 function attachEventListeners() {
-    console.log('Attaching event listeners...');
+
     
     // Scene and transition buttons
     const addSceneBtn = document.getElementById('addSceneBtn');
@@ -120,7 +123,7 @@ function attachEventListeners() {
         addExtractedBtn.addEventListener('click', uiAddExtractedScenes);
     }
     
-    console.log('Event listeners attached complete');
+
 }
 
 /**
@@ -285,7 +288,8 @@ function displayVoiceQuality(voiceAnalysis) {
 }
 
 function createVoiceQualityElement() {
-    const container = document.getElementById('voiceStatus');
+    // Append to the voice card container, not the hidden voiceStatus
+    const container = document.getElementById('voiceStatus')?.closest('.card') || document.getElementById('voiceStatus');
     const qualityDiv = document.createElement('div');
     qualityDiv.id = 'voiceQuality';
     container.appendChild(qualityDiv);
@@ -624,7 +628,18 @@ function uiInterpretDream() {
         return;
     }
 
-    const report = generateInterpretation(scenes, {}, dreamSymbols);
+    // Build a proper analysis object from available data or perform fresh analysis
+    const analysis = lastDreamAnalysis || {
+        theme: 'Unknown',
+        complexity: 'Unknown',
+        symbols: new Map(),
+        qualityLevel: 'N/A',
+        confidence: 0,
+        emotionCounts: {},
+        patterns: {}
+    };
+
+    const report = generateInterpretation(scenes, analysis, dreamSymbols);
     const output = document.getElementById('sequenceOutput');
     output.style.display = 'block';
     output.textContent = report;
@@ -645,6 +660,28 @@ function resizeCanvas() {
     drawGraph();
 }
 
+// Theme-aware canvas colors
+const canvasColors = {
+    nodeFills: [
+        'rgba(99, 102, 241, 0.3)',   // indigo
+        'rgba(244, 114, 182, 0.3)',   // pink
+        'rgba(34, 211, 238, 0.3)',    // cyan
+        'rgba(251, 191, 36, 0.3)',    // amber
+        'rgba(52, 211, 153, 0.3)'    // emerald
+    ],
+    nodeStrokes: [
+        'rgba(99, 102, 241, 0.8)',
+        'rgba(244, 114, 182, 0.8)',
+        'rgba(34, 211, 238, 0.8)',
+        'rgba(251, 191, 36, 0.8)',
+        'rgba(52, 211, 153, 0.8)'
+    ],
+    text: '#e2e8f0',
+    textSecondary: '#94a3b8',
+    labelBg: 'rgba(16, 16, 42, 0.85)',
+    primary: '#8b5cf6'
+};
+
 function drawGraph() {
     if (!ctx || !canvas) {
         console.error('Canvas context not initialized');
@@ -654,9 +691,8 @@ function drawGraph() {
     const scenes = dreamGraph.getAllScenes();
 
     if (scenes.length === 0) {
-        ctx.fillStyle = getComputedStyle(document.documentElement)
-            .getPropertyValue('--color-text-secondary');
-        ctx.font = '16px sans-serif';
+        ctx.fillStyle = canvasColors.textSecondary;
+        ctx.font = '16px Inter, sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText('Add scenes to visualize your dream graph', canvas.width / 2, canvas.height / 2);
         return;
@@ -670,13 +706,8 @@ function drawGraph() {
     });
 
     // Draw nodes
-    const colors = [
-        'var(--color-bg-1)', 'var(--color-bg-2)', 'var(--color-bg-3)', 
-        'var(--color-bg-4)', 'var(--color-bg-5)'
-    ];
-
     scenes.forEach((scene, index) => {
-        drawNode(scene, colors[index % colors.length]);
+        drawNode(scene, index);
     });
 }
 
@@ -691,7 +722,7 @@ function drawEdge(scene, edge) {
     };
 
     // Draw line
-    ctx.strokeStyle = `rgba(33, 128, 141, ${edge.probability})`;
+    ctx.strokeStyle = `rgba(139, 92, 246, ${0.3 + edge.probability * 0.7})`;
     ctx.lineWidth = 2 + edge.probability * 2;
     ctx.beginPath();
     ctx.moveTo(from.x, from.y);
@@ -716,41 +747,47 @@ function drawEdge(scene, edge) {
     // Draw probability label
     const midX = (from.x + arrowEnd.x) / 2;
     const midY = (from.y + arrowEnd.y) / 2;
-    ctx.fillStyle = getComputedStyle(document.documentElement)
-        .getPropertyValue('--color-surface');
-    ctx.fillRect(midX - 20, midY - 10, 40, 20);
-    ctx.fillStyle = getComputedStyle(document.documentElement)
-        .getPropertyValue('--color-text');
-    ctx.font = '12px sans-serif';
+    ctx.fillStyle = canvasColors.labelBg;
+    ctx.beginPath();
+    ctx.roundRect(midX - 22, midY - 12, 44, 24, 6);
+    ctx.fill();
+    ctx.fillStyle = canvasColors.text;
+    ctx.font = '11px Inter, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(edge.probability.toFixed(2), midX, midY + 4);
 }
 
-function drawNode(scene, colorVar) {
+function drawNode(scene, index) {
     const x = scene.x + offset.x;
     const y = scene.y + offset.y;
-    const colorValue = getComputedStyle(document.documentElement)
-        .getPropertyValue(colorVar.replace('var(', '').replace(')', ''));
+    const colorIdx = index % canvasColors.nodeFills.length;
+
+    // Outer glow
+    ctx.shadowColor = canvasColors.nodeStrokes[colorIdx];
+    ctx.shadowBlur = 12;
 
     // Draw node circle
-    ctx.fillStyle = colorValue;
-    ctx.strokeStyle = getComputedStyle(document.documentElement)
-        .getPropertyValue('--color-primary');
+    ctx.fillStyle = canvasColors.nodeFills[colorIdx];
+    ctx.strokeStyle = canvasColors.nodeStrokes[colorIdx];
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(x, y, 35, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
 
+    // Reset shadow
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+
     // Draw node label
-    ctx.fillStyle = getComputedStyle(document.documentElement)
-        .getPropertyValue('--color-text');
-    ctx.font = 'bold 14px sans-serif';
+    ctx.fillStyle = canvasColors.text;
+    ctx.font = 'bold 14px Inter, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(`S${scene.id}`, x, y + 5);
 
     // Draw scene name below
-    ctx.font = '12px sans-serif';
+    ctx.font = '12px Inter, sans-serif';
+    ctx.fillStyle = canvasColors.textSecondary;
     const text = scene.name.length > 15 ? scene.name.substring(0, 15) + '...' : scene.name;
     ctx.fillText(text, x, y + 55);
 }
@@ -762,54 +799,58 @@ function drawNode(scene, colorVar) {
 let draggedScene = null;
 let dragOffset = { x: 0, y: 0 };
 
-canvas.addEventListener('mousedown', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-    
-    draggedScene = findSceneAtPosition(dreamGraph.scenes, mouseX, mouseY, offset);
-    
-    if (draggedScene) {
-        dragOffset.x = mouseX - (draggedScene.x + offset.x);
-        dragOffset.y = mouseY - (draggedScene.y + offset.y);
-        canvas.style.cursor = 'grabbing';
-    } else {
-        isDragging = true;
-        dragStart = { x: e.clientX - offset.x, y: e.clientY - offset.y };
-    }
-});
+function setupCanvasInteraction() {
+    if (!canvas) return;
 
-canvas.addEventListener('mousemove', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-    
-    if (draggedScene) {
-        draggedScene.x = mouseX - offset.x - dragOffset.x;
-        draggedScene.y = mouseY - offset.y - dragOffset.y;
+    canvas.addEventListener('mousedown', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
         
-        draggedScene.x = Math.max(80, Math.min(canvas.width - 80, draggedScene.x));
-        draggedScene.y = Math.max(80, Math.min(canvas.height - 80, draggedScene.y));
+        draggedScene = findSceneAtPosition(dreamGraph.scenes, mouseX, mouseY, offset);
         
-        drawGraph();
-    } else if (isDragging) {
-        offset.x = e.clientX - dragStart.x;
-        offset.y = e.clientY - dragStart.y;
-        drawGraph();
-    }
-});
+        if (draggedScene) {
+            dragOffset.x = mouseX - (draggedScene.x + offset.x);
+            dragOffset.y = mouseY - (draggedScene.y + offset.y);
+            canvas.style.cursor = 'grabbing';
+        } else {
+            isDragging = true;
+            dragStart = { x: e.clientX - offset.x, y: e.clientY - offset.y };
+        }
+    });
 
-canvas.addEventListener('mouseup', () => {
-    isDragging = false;
-    draggedScene = null;
-    canvas.style.cursor = 'grab';
-});
+    canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        
+        if (draggedScene) {
+            draggedScene.x = mouseX - offset.x - dragOffset.x;
+            draggedScene.y = mouseY - offset.y - dragOffset.y;
+            
+            draggedScene.x = Math.max(80, Math.min(canvas.width - 80, draggedScene.x));
+            draggedScene.y = Math.max(80, Math.min(canvas.height - 80, draggedScene.y));
+            
+            drawGraph();
+        } else if (isDragging) {
+            offset.x = e.clientX - dragStart.x;
+            offset.y = e.clientY - dragStart.y;
+            drawGraph();
+        }
+    });
 
-canvas.addEventListener('mouseleave', () => {
-    isDragging = false;
-    draggedScene = null;
-    canvas.style.cursor = 'grab';
-});
+    canvas.addEventListener('mouseup', () => {
+        isDragging = false;
+        draggedScene = null;
+        canvas.style.cursor = 'grab';
+    });
+
+    canvas.addEventListener('mouseleave', () => {
+        isDragging = false;
+        draggedScene = null;
+        canvas.style.cursor = 'grab';
+    });
+}
 
 // ============================================
 // UTILITY FUNCTIONS
@@ -978,6 +1019,9 @@ function displayDreamHistory() {
 /**
  * Export dream data
  */
+// Alias for event listener compatibility
+function exportDreamData() { return enhancedExport(); }
+
 function enhancedExport() {
     if (!dreamTracker) return;
     
