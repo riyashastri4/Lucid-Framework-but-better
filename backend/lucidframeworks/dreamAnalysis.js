@@ -153,11 +153,10 @@ function analyzeTransitionsReport(scenes) {
                 }
             }
             
-            // Get destination name safely
             let destName = 'Unknown';
-            if (maxEdge.to) {
-                destName = typeof maxEdge.to === 'string' ? maxEdge.to : (maxEdge.to.name || 'Unknown');
-            }
+if (maxEdge && maxEdge.to) {
+    destName = typeof maxEdge.to === 'string' ? maxEdge.to : (maxEdge.to.name || 'Unknown');
+}
             
             analysis.push(
                 `• "${sceneName}"\n  → Most likely: "${destName}" (${(maxEdge.probability * 100).toFixed(0)}%)`
