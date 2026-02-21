@@ -945,7 +945,8 @@ function displayDreamHistory() {
     
     const history = dreamTracker.getDreamHistory();
     if (history.length === 0) {
-        alert('No dreams recorded yet. Analyze a dream to start tracking history.');\n        return;
+        alert('No dreams recorded yet. Analyze a dream to start tracking history.');
+        return;
     }
     
     const output = document.getElementById('sequenceOutput');
