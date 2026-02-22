@@ -227,8 +227,8 @@ function startVoiceRecognition() {
     if (isListening) return;
 
     try {
-        // CALL THIS FIRST: Production browsers require a clean user gesture 
-        // to trigger the microphone prompt.
+        // PRODUCTION FIX: Call start() as the VERY FIRST action.
+        // Any logic before this can cause the browser to block the mic prompt.
         recognition.start(); 
         
         fullTranscript = '';
@@ -508,7 +508,7 @@ function uiAddScene() {
     
     if (!desc || !dreamGraph) return;
 
-    // Fetch the canvas directly to get fresh dimensions
+    // Direct reference to element instead of global variable
     const canvasElement = document.getElementById('graphCanvas'); 
     const w = canvasElement ? canvasElement.width : 800;
     const h = canvasElement ? canvasElement.height : 600;

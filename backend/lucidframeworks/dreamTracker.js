@@ -356,8 +356,6 @@ class DreamTracker {
     }
 }
 
-// Global instance
-let dreamTracker = null;
 
 function initializeDreamTracker() {
     if (!dreamTracker) {
