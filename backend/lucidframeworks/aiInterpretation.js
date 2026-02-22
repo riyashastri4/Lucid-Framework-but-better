@@ -93,8 +93,7 @@ const lifeDomains = {
     'health': {
         keywords: ['body', 'illness', 'doctor', 'healing', 'strength', 'weakness', 'falling', 'drowning'],
         themes: ['vitality', 'vulnerability', 'healing', 'restoration', 'balance'],
-        // Change this line (around line 96):
-messages: ['Your dreams may reflect health awareness', 'Consider your physical well-being', "Listen to your body's messages"] 
+        messages: ['Your dreams may reflect health awareness', 'Consider your physical well-being', "Listen to your body's messages"] 
     },
     'spirituality': {
         keywords: ['angel', 'heaven', 'temple', 'light', 'sky', 'transcendence', 'magic', 'divine'],
@@ -109,7 +108,7 @@ messages: ['Your dreams may reflect health awareness', 'Consider your physical w
     'identity': {
         keywords: ['mirror', 'self', 'transformation', 'becoming', 'change', 'growth', 'shadow'],
         themes: ['self-discovery', 'change', 'integration', 'authenticity', 'evolution'],
-        messages: ['You\'re exploring who you are', 'Embrace personal growth and change', 'Integrate all aspects of yourself']
+        messages: ['You are exploring who you are', 'Embrace personal growth and change', 'Integrate all aspects of yourself']
     }
 };
 
