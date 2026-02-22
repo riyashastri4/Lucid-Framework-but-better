@@ -227,7 +227,9 @@ function startVoiceRecognition() {
     if (isListening) return;
 
     try {
-        recognition.start();
+        // CALL THIS FIRST: Production browsers require a clean user gesture 
+        // to trigger the microphone prompt.
+        recognition.start(); 
         
         fullTranscript = '';
         const transcript = document.getElementById('voiceTranscript');
@@ -235,17 +237,10 @@ function startVoiceRecognition() {
             transcript.textContent = 'Listening...';
             transcript.classList.remove('empty');
         }
-        
         updateStatus('Listening...', 'info');
-        
     } catch (e) {
-        console.error('[VOICE] Speech activation failed:', e);
-        
-        if (e.name === 'InvalidStateError') {
-            recognition.stop();
-        } else {
-            showTextInputFallback();
-        }
+        console.error('Mic start failed:', e);
+        showTextInputFallback();
     }
 }
 
@@ -511,10 +506,11 @@ function uiAddScene() {
     const sceneInput = document.getElementById('sceneDesc');
     const desc = sceneInput.value.trim();
     
-    if (!desc || !dreamGraph) return; // Ensure dreamGraph exists
+    if (!desc || !dreamGraph) return;
 
-    const canvasElement = document.getElementById('graphCanvas');
-    const w = canvasElement ? canvasElement.width : 800; // Direct reference
+    // Fetch the canvas directly to get fresh dimensions
+    const canvasElement = document.getElementById('graphCanvas'); 
+    const w = canvasElement ? canvasElement.width : 800;
     const h = canvasElement ? canvasElement.height : 600;
 
     dreamGraph.addScene(desc, Math.random() * (w - 100) + 50, Math.random() * (h - 100) + 50);
