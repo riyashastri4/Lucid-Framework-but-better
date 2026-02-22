@@ -225,15 +225,16 @@ function startVoiceRecognition() {
     
     if (isListening) return;
     
+    // Reset data
+    fullTranscript = '';
+    document.getElementById('voiceTranscript').textContent = 'Listening...';
+
     try {
-        fullTranscript = '';
-        // CRITICAL: This must be a direct call inside the click event
+        // This MUST be a direct call to trigger the browser's mic prompt
         recognition.start(); 
     } catch (e) {
-        console.error('[VOICE] Start failed:', e);
-        // Attempt a hard reset if it's stuck in a previous state
-        recognition.abort();
-        setTimeout(() => recognition.start(), 100);
+        console.error('Speech activation failed:', e);
+        showTextInputFallback();
     }
 }
 
@@ -504,23 +505,20 @@ function uiAddScene() {
         return;
     }
 
-    // Force re-detection of the canvas to avoid null references
+    // Explicitly find the canvas element to get width/height
     const canvasElement = document.getElementById('graphCanvas');
     const w = canvasElement ? canvasElement.width : 800;
     const h = canvasElement ? canvasElement.height : 600;
 
-    // Ensure the graph object exists before calling its methods
+    // Add the scene to the graph instance
     if (dreamGraph) {
-        dreamGraph.addScene(desc, Math.random() * (w - 160) + 80, Math.random() * (h - 160) + 80);
-        
+        dreamGraph.addScene(desc, Math.random() * (w - 100) + 50, Math.random() * (h - 100) + 50);
         sceneInput.value = '';
         
-        // Refresh the UI components
+        // Refresh the display
         updateSceneSelects();
         updateSceneList();
         drawGraph();
-    } else {
-        console.error("dreamGraph is not initialized.");
     }
 }
 
