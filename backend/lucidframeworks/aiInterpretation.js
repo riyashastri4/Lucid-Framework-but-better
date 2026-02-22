@@ -93,8 +93,7 @@ const lifeDomains = {
     'health': {
         keywords: ['body', 'illness', 'doctor', 'healing', 'strength', 'weakness', 'falling', 'drowning'],
         themes: ['vitality', 'vulnerability', 'healing', 'restoration', 'balance'],
-        messages: ['Your dreams may reflect health awareness', 'Consider your physical well-being', 'Listen to your body\\'s messages']
-    },
+        messages: ["Your dreams may reflect health awareness", "Consider your physical well-being", "Listen to your body's messages"]    },
     'spirituality': {
         keywords: ['angel', 'heaven', 'temple', 'light', 'sky', 'transcendence', 'magic', 'divine'],
         themes: ['meaning', 'purpose', 'connection', 'enlightenment', 'faith'],
@@ -108,12 +107,16 @@ const lifeDomains = {
     'identity': {
         keywords: ['mirror', 'self', 'transformation', 'becoming', 'change', 'growth', 'shadow'],
         themes: ['self-discovery', 'change', 'integration', 'authenticity', 'evolution'],
-        messages: ['You\'re exploring who you are', 'Embrace personal growth and change', 'Integrate all aspects of yourself']
+        messages: ['You are exploring who you are', 'Embrace personal growth and change', 'Integrate all aspects of yourself']
     }
 };
 
 /**
  * Generate AI-driven dream interpretation
+ */
+/**
+ * Generate AI-driven dream interpretation
+ * Uses psychological frameworks to provide deeper insights
  */
 function generateAIInterpretation(analysis) {
     const interpretation = {
@@ -125,19 +128,19 @@ function generateAIInterpretation(analysis) {
         recommendations: []
     };
 
-    // 1. Determine applicable psychological perspectives
+    // 1. Determine applicable psychological perspectives (Jungian, Freudian, etc.)
     interpretation.perspectives = determineApplicablePerspectives(analysis);
 
-    // 2. Match to archetypes
+    // 2. Match to archetypes based on detected symbols
     interpretation.archetypeMatch = matchArchetypes(analysis.symbols);
 
-    // 3. Identify life domain
+    // 3. Identify life domains (Career, Relationships, Health)
     interpretation.domainAnalysis = identifyLifeDomains(analysis);
 
-    // 4. Generate deep insights
+    // 4. Generate deep insights based on synthesized patterns
     interpretation.insights = generateDeepInsights(analysis, interpretation);
 
-    // 5. Provide recommendations
+    // 5. Provide actionable recommendations
     interpretation.recommendations = generateRecommendations(analysis, interpretation);
 
     return interpretation;

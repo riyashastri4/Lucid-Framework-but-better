@@ -152,7 +152,7 @@ class DreamTracker {
         if (recurringScenes === this.sceneFrequency.size && recurringScenes < 5) {
             return 'cyclical'; // Same scenes repeat in cycles
         }
-        if (averageSceneCount > 8) {
+        if (avgSceneCount > 8) {
             return 'narrative_heavy'; // Complex narratives
         }
         if (this.transitions.size > this.sceneFrequency.size * 2) {
@@ -356,8 +356,6 @@ class DreamTracker {
     }
 }
 
-// Global instance
-let dreamTracker = null;
 
 function initializeDreamTracker() {
     if (!dreamTracker) {

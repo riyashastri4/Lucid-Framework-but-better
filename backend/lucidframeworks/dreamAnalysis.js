@@ -5,15 +5,21 @@
 
 /**
  * Perform comprehensive dream analysis with enhanced metrics
+ * Synthesizes all backend logic for the AI Interpretation engine
  */
 function performDeepDreamAnalysis(transcript, voiceAnalysis, segments) {
-    const foundSymbols = extractSymbols(transcript);
-    const emotionCounts = analyzeEmotions(transcript);
+    const foundSymbols = extractSymbols(transcript); // From dreamSymbols.js
+    const emotionCounts = analyzeEmotions(transcript); // From dreamSymbols.js
     const wordCount = transcript.split(/\s+/).length;
     const sentenceCount = (transcript.match(/[.!?]+/g) || []).length;
+    
+    // Core metrics
     const dominantEmotion = getDominantEmotion(emotionCounts);
     const theme = determineDreamTheme(foundSymbols, emotionCounts);
     const complexity = calculateDreamComplexity(foundSymbols, emotionCounts);
+    
+    // Theme patterns - captures "everything important"
+    const patterns = extractThemes(transcript);
 
     return {
         segments, 
@@ -24,7 +30,7 @@ function performDeepDreamAnalysis(transcript, voiceAnalysis, segments) {
         complexity: complexity,
         wordCount: wordCount, 
         sentenceCount: sentenceCount,
-        patterns: extractThemes(transcript),
+        patterns: patterns, // Key for deep AI interpretation
         confidence: voiceAnalysis?.confidence || 0.7,
         qualityLevel: voiceAnalysis?.quality || 'Good Quality'
     };
@@ -34,14 +40,24 @@ function performDeepDreamAnalysis(transcript, voiceAnalysis, segments) {
  * Generate comprehensive dream interpretation report with multiple formats
  */
 function generateInterpretation(scenes, analysis, dreamSymbolsObj) {
-    let interpretation = [`🔮 Dream Interpretation\n${'='.repeat(50)}\n\n`];
-    interpretation.push('⚠️ DISCLAIMER: This interpretation is based on common dream symbolism\n');
+    // Defensive defaults for missing analysis fields
+    analysis = analysis || {};
+    analysis.theme = analysis.theme || 'Unknown';
+    analysis.complexity = analysis.complexity || 'Unknown';
+    analysis.symbols = analysis.symbols instanceof Map ? analysis.symbols : new Map();
+    analysis.qualityLevel = analysis.qualityLevel || 'N/A';
+    analysis.confidence = analysis.confidence || 0;
+    analysis.emotionCounts = analysis.emotionCounts || {};
+    analysis.patterns = analysis.patterns || {};
+
+    let interpretation = [`Dream Interpretation\n${'='.repeat(50)}\n\n`];
+    interpretation.push('DISCLAIMER: This interpretation is based on common dream symbolism\n');
     interpretation.push('and psychological theory. It is not a substitute for professional\n');
     interpretation.push('psychological or medical advice. Dream meanings are highly personal.\n\n');
     interpretation.push('─'.repeat(50) + '\n\n');
     
     // Dream Overview
-    interpretation.push(`📊 Dream Overview:`);
+    interpretation.push(`Dream Overview:`);
     interpretation.push(`  Theme: ${analysis.theme}`);
     interpretation.push(`  Complexity: ${analysis.complexity}`);
     interpretation.push(`  Symbols Found: ${analysis.symbols.size}`);
