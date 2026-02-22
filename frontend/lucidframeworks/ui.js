@@ -217,7 +217,7 @@ function setupVoice() {
     };
 }
 
-// Update this in ui.js
+
 function startVoiceRecognition() {
     if (!recognition) {
         showTextInputFallback();
@@ -227,21 +227,28 @@ function startVoiceRecognition() {
     if (isListening) return;
 
     try {
-        // CRITICAL: Must be the first operation to satisfy browser security
-        recognition.start(); 
+        recognition.start();
         
-        // Move all UI and variable resets AFTER the start call
         fullTranscript = '';
         const transcript = document.getElementById('voiceTranscript');
         if (transcript) {
             transcript.textContent = 'Listening...';
             transcript.classList.remove('empty');
         }
+        
+        updateStatus('Listening...', 'info');
+        
     } catch (e) {
-        console.error('Speech activation failed:', e);
-        showTextInputFallback();
+        console.error('[VOICE] Speech activation failed:', e);
+        
+        if (e.name === 'InvalidStateError') {
+            recognition.stop();
+        } else {
+            showTextInputFallback();
+        }
     }
 }
+
 function showTextInputFallback() {
     const transcript = document.getElementById('voiceTranscript');
     if (!transcript) return;
@@ -500,34 +507,22 @@ function createAIReportElement() {
     return section;
 }
 
-// Update this in ui.js
 function uiAddScene() {
     const sceneInput = document.getElementById('sceneDesc');
     const desc = sceneInput.value.trim();
     
-    if (!desc) {
-        alert('Please enter a scene description');
-        return;
-    }
+    if (!desc || !dreamGraph) return; // Ensure dreamGraph exists
 
-    // Ensure we have a valid canvas and graph object
     const canvasElement = document.getElementById('graphCanvas');
-    if (!canvasElement || !dreamGraph) {
-        console.error("System not fully initialized");
-        return;
-    }
+    const w = canvasElement ? canvasElement.width : 800; // Direct reference
+    const h = canvasElement ? canvasElement.height : 600;
 
-    const w = canvasElement.width;
-    const h = canvasElement.height;
-
-    // Use the engine to add the scene
     dreamGraph.addScene(desc, Math.random() * (w - 100) + 50, Math.random() * (h - 100) + 50);
     sceneInput.value = '';
     
     updateSceneSelects();
     updateSceneList();
     drawGraph();
-}  }
 }
 
 /**
