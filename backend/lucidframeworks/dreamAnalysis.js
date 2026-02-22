@@ -5,15 +5,21 @@
 
 /**
  * Perform comprehensive dream analysis with enhanced metrics
+ * Synthesizes all backend logic for the AI Interpretation engine
  */
 function performDeepDreamAnalysis(transcript, voiceAnalysis, segments) {
-    const foundSymbols = extractSymbols(transcript);
-    const emotionCounts = analyzeEmotions(transcript);
+    const foundSymbols = extractSymbols(transcript); // From dreamSymbols.js
+    const emotionCounts = analyzeEmotions(transcript); // From dreamSymbols.js
     const wordCount = transcript.split(/\s+/).length;
     const sentenceCount = (transcript.match(/[.!?]+/g) || []).length;
+    
+    // Core metrics
     const dominantEmotion = getDominantEmotion(emotionCounts);
     const theme = determineDreamTheme(foundSymbols, emotionCounts);
     const complexity = calculateDreamComplexity(foundSymbols, emotionCounts);
+    
+    // Theme patterns - captures "everything important"
+    const patterns = extractThemes(transcript);
 
     return {
         segments, 
@@ -24,7 +30,7 @@ function performDeepDreamAnalysis(transcript, voiceAnalysis, segments) {
         complexity: complexity,
         wordCount: wordCount, 
         sentenceCount: sentenceCount,
-        patterns: extractThemes(transcript),
+        patterns: patterns, // Key for deep AI interpretation
         confidence: voiceAnalysis?.confidence || 0.7,
         qualityLevel: voiceAnalysis?.quality || 'Good Quality'
     };

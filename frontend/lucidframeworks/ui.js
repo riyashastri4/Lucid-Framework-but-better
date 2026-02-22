@@ -581,6 +581,7 @@ function updateSceneList() {
 
 /**
  * Add extracted scenes to graph
+ * FIX: Extracts the scene name string from the object to prevent [object Object] labels
  */
 function uiAddExtractedScenes() {
     if (extractedScenes.length === 0) {
@@ -592,8 +593,15 @@ function uiAddExtractedScenes() {
     let addedCount = 0;
 
     // Add all extracted scenes
-    extractedScenes.forEach(sceneName => {
-        dreamGraph.addScene(sceneName, Math.random() * (canvas.width - 200) + 100, Math.random() * (canvas.height - 200) + 100);
+    extractedScenes.forEach(sceneObj => {
+        // FIX: Ensure we use the 'scene' property if it's an object
+        const sceneName = typeof sceneObj === 'string' ? sceneObj : sceneObj.scene;
+        
+        dreamGraph.addScene(
+            sceneName, 
+            Math.random() * (canvas.width - 200) + 100, 
+            Math.random() * (canvas.height - 200) + 100
+        );
         addedCount++;
     });
 
@@ -602,6 +610,7 @@ function uiAddExtractedScenes() {
     extractedTransitions.forEach(transition => {
         if (scenes.length > 0) {
             const fromScene = scenes[scenes.length - 1];
+            // Match the transition destination to existing scene names
             const toScene = scenes.find(s => 
                 s.name.toLowerCase().includes(transition.destination.toLowerCase().split(' ')[0]) ||
                 transition.destination.toLowerCase().includes(s.name.toLowerCase())
@@ -626,6 +635,7 @@ function uiAddExtractedScenes() {
     updateSceneList();
     drawGraph();
 
+    // Reset UI state
     document.getElementById('voiceTranscript').textContent = '';
     document.getElementById('voiceTranscript').classList.add('empty');
     document.getElementById('extractedData').classList.add('hidden');

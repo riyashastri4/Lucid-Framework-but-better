@@ -114,6 +114,10 @@ const lifeDomains = {
 /**
  * Generate AI-driven dream interpretation
  */
+/**
+ * Generate AI-driven dream interpretation
+ * Uses psychological frameworks to provide deeper insights
+ */
 function generateAIInterpretation(analysis) {
     const interpretation = {
         title: `AI Dream Analysis: ${analysis.theme}`,
@@ -124,19 +128,19 @@ function generateAIInterpretation(analysis) {
         recommendations: []
     };
 
-    // 1. Determine applicable psychological perspectives
+    // 1. Determine applicable psychological perspectives (Jungian, Freudian, etc.)
     interpretation.perspectives = determineApplicablePerspectives(analysis);
 
-    // 2. Match to archetypes
+    // 2. Match to archetypes based on detected symbols
     interpretation.archetypeMatch = matchArchetypes(analysis.symbols);
 
-    // 3. Identify life domain
+    // 3. Identify life domains (Career, Relationships, Health)
     interpretation.domainAnalysis = identifyLifeDomains(analysis);
 
-    // 4. Generate deep insights
+    // 4. Generate deep insights based on synthesized patterns
     interpretation.insights = generateDeepInsights(analysis, interpretation);
 
-    // 5. Provide recommendations
+    // 5. Provide actionable recommendations
     interpretation.recommendations = generateRecommendations(analysis, interpretation);
 
     return interpretation;
