@@ -217,7 +217,6 @@ function setupVoice() {
     };
 }
 
-// In ui.js - Update this function
 function startVoiceRecognition() {
     if (!recognition) {
         showTextInputFallback();
@@ -225,15 +224,16 @@ function startVoiceRecognition() {
     }
     
     if (isListening) return;
-
+    
     try {
         fullTranscript = '';
-        // CRITICAL: Call start() directly without any preceding async logic or timeouts
+        // CRITICAL: This must be a direct call inside the click event
         recognition.start(); 
     } catch (e) {
-        console.error('[VOICE] Direct start failed:', e);
-        // Fallback to text if the mic is blocked or already running
-        showTextInputFallback();
+        console.error('[VOICE] Start failed:', e);
+        // Attempt a hard reset if it's stuck in a previous state
+        recognition.abort();
+        setTimeout(() => recognition.start(), 100);
     }
 }
 
@@ -495,7 +495,6 @@ function createAIReportElement() {
     return section;
 }
 
-// In ui.js - Update uiAddScene
 function uiAddScene() {
     const sceneInput = document.getElementById('sceneDesc');
     const desc = sceneInput.value.trim();
@@ -505,20 +504,24 @@ function uiAddScene() {
         return;
     }
 
-    // Ensure we are using the current global canvas dimensions
+    // Force re-detection of the canvas to avoid null references
     const canvasElement = document.getElementById('graphCanvas');
     const w = canvasElement ? canvasElement.width : 800;
     const h = canvasElement ? canvasElement.height : 600;
 
-    // Add the scene to the data structure
-    dreamGraph.addScene(desc, Math.random() * (w - 100) + 50, Math.random() * (h - 100) + 50);
-    
-    sceneInput.value = '';
-    
-    // Refresh the UI
-    updateSceneSelects();
-    updateSceneList();
-    drawGraph();
+    // Ensure the graph object exists before calling its methods
+    if (dreamGraph) {
+        dreamGraph.addScene(desc, Math.random() * (w - 160) + 80, Math.random() * (h - 160) + 80);
+        
+        sceneInput.value = '';
+        
+        // Refresh the UI components
+        updateSceneSelects();
+        updateSceneList();
+        drawGraph();
+    } else {
+        console.error("dreamGraph is not initialized.");
+    }
 }
 
 /**
